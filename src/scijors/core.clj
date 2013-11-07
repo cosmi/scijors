@@ -1,6 +1,3 @@
-(ns scijors.core)
-
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
+(ns scijors.core
+  (:require [instaparse.core :as insta]
+            [clojure.string :as strings]))
