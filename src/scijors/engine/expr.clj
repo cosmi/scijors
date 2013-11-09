@@ -27,10 +27,11 @@ Variable = sym;
 ")
 
 (def struct-grammar "
+Set = <hashlbrace> ( (Expr (<comma> Expr)*) | (ConstItem (<clj-ws> ConstItem)*))?<rbrace>;
 Vector = <lsqparen> ( (Expr (<comma> Expr)*) | (ConstItem (<clj-ws> ConstItem)*))?<rsqparen>;
 Map = <lbrace> ((Expr <colon> Expr) (<comma> Expr <colon> Expr)* |
 (ConstItem <clj-ws> ConstItem) (<clj-ws> ConstItem <clj-ws> ConstItem)* )? <rbrace>;
-<Item> = ConstItem / Symbol / Map / Vector;
+<Item> = ConstItem / Symbol / Map / Vector / Set;
 <Expr> = Item | OpExpr;"
   )
 
@@ -53,25 +54,29 @@ LT = OpExpr30 <ws>? <'<'> <ws>? OpExpr30;
 EqualNum = OpExpr30 <ws>? <'==='> <ws>? OpExpr30;
 NotEqualNum = OpExpr30 <ws>? <'!=='> <ws>? OpExpr30;
 
-<OpExpr30> = Plus | Concat | OpExpr40;
+<OpExpr30> = Concat | OpExpr35;
+Concat = OpExpr35 (<ws>? <'&'> <ws>? OpExpr35) +;
+
+<OpExpr35> = Plus | OpExpr40;
 Plus = OpExpr40 (<ws>? <'+'> <ws>? OpExpr40) +;
-Concat = OpExpr40 (<ws>? <'&'> <ws>? OpExpr40) +;
+
 <OpExpr40> = Minus | OpExpr50;
 Minus = OpExpr50 (<ws> <'-'> <ws>? OpExpr50) +;
 
 <OpExpr50> = Mult | OpExpr60;
 Mult = OpExpr60 (<ws>? <'*'> <ws>? OpExpr60) +;
 <OpExpr60> = Div | DivInt | OpExpr70;
-Div = OpExpr70 (<ws> <'/'> <ws> OpExpr70) +;
+Div = OpExpr60 (<ws> <'/'> <ws> OpExpr70) +;
 DivInt = OpExpr70 (<ws> <'//'> <ws> OpExpr70) +;
 
-<OpExpr70> = UnaryMinus | Not | OpExpr80;
+<OpExpr70> = UnaryMinus | Not | Deref | OpExpr80;
 UnaryMinus = <'-'> !#'[0-9]' <ws>? OpExpr70;
 Not = <'!'> <ws>? OpExpr70;
+Deref = <'@'> <ws>? OpExpr70;
 
 <OpExpr80> = Index | Call | DotIndex | OpExpr100;
-Index = OpExpr80 lsqparen Expr (<comma> Expr)* rsqparen;
-Call = OpExpr80 lparen Expr (<comma> Expr)* rparen;
+Index = OpExpr80 <lsqparen> Expr (<comma> Expr)* <rsqparen>;
+Call = OpExpr80 <lparen> Expr (<comma> Expr)* <rparen>;
 DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
 
 <OpExpr100> = <'('> <ws>? Expr <ws>? <')'> | Item;
@@ -102,6 +107,10 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
 
 (defmulti compile-expr-impl first)
 
+(defmethod compile-expr-impl :default [input]
+  (prn "Dispatch error" input)
+  (throw (Exception.)))
+
 
 (defmethod compile-expr-impl :Integer [[_ val]]
   (const (Long/parseLong val)))
@@ -130,15 +139,10 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
          (fn ~(symbol (str "make-" (strings/lower-case (name type))))
            [] ~@body)))))
 
-;; (defmethod compile-expr-impl :Vector [[_ & els]]
-;;   (let [els (map compile-expr els)]
-;;     (if (every? const? els)
-;;       (const (mapv #(%) els))
-;;       (fn make-vector []
-;;         (mapv #(%) els)
-;;         ))))
 (def-op :Vector els
   (mapv #(%) els))
+(def-op :Set els
+  (set (map #(%) els)))
 (def-op :Concat els
   (apply str (map #(%) els)))
 (def-op :Plus els
@@ -203,6 +207,36 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
         ))))
 
 
+(defmethod compile-expr-impl :CljCoreSymbol [[_ s]]
+  (->> s (str "clojure.core/") symbol find-var deref const))
 
+(defmethod compile-expr-impl :CljNSSymbol [[_ s]]
+  (->> s symbol find-var deref const))
+
+(defmethod compile-expr-impl :Variable [[_ s]]
+  (let [kword (keyword s)]
+    (fn variable []
+      (get-scope-variable kword))))
+
+(defmethod compile-expr-impl :DotIndex [[_ expr & s]]
+  (let [kword (mapv keyword s)
+        expr (compile-expr expr)
+        fun (fn dot-index []
+              (get-in (expr) kword))]
+    (if (const? expr)
+      (const (fun))
+      fun)))
+
+(def-op :Index els
+  (let [[v & i] (mapv #(%) els)]
+    (get-in v i)))
+
+
+(defmethod compile-expr-impl :Call [[_ expr & args]]
+  (let [expr (compile-expr expr)
+        args (mapv compile-expr args)]
+    (fn call []
+      (apply (expr) (map #(%) args)))))
+  
 (defn compile-expr [tree]
   (compile-expr-impl (cond-> tree (seq? tree) first)))

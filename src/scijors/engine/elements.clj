@@ -21,6 +21,7 @@
 <lparen> = ws? '(' ws?;
 <rparen> = ws? ')' ws?;
 <lbrace> = ws? '{' ws?;
+<hashlbrace> = ws? '#{' ws?;
 <rbrace> = ws? '}' ws?;
 <comma> = ws? ',' ws?;
 <colon> = ws? ':' !usym ws?;

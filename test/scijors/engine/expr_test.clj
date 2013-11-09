@@ -50,7 +50,7 @@
 
 
 
-(deftest compile-constants
+(deftest compile-constants-test
   (let [tests {"4" 4 "8." 8. "-3" -3 "-.4" -0.4 "-2/4" -1/2
                "\"abc\"" "abc"  "\"a\\\"bc\"" "a\"bc"
                "nil" nil "null" nil "false" false "true" true ":a" :a
@@ -78,9 +78,39 @@
                "3.===6/2" true
                "3&2" "32"
                "3&2&\"a\"" "32a"
+               "{:a 1}.a" 1
+               "{:a : 1, :b: {:c 3}}.b.c" 3
+               "{:a 1}.b" nil
+               "1.a" nil
+               "#{1}" #{1}
+               "#{1, {:a 2}}" #{1 {:a 2}}
+               "#{1 2}" #{1 2}
+               "#{1,2}" #{1,2}
+               "[1,2,3][1]" 2
                }]
     (doseq [[s v] tests]
       (testing (str "Parsing: " (prn-str s))
-        (is (=  (-> s parser compile-expr const?)))
+        (is (-> s parser compile-expr const?))
         (is (= v ((-> s parser compile-expr))))))))
+
+(deftest compile-index-and-call-test
+  (is (= "3" ((-> "/str(3)" parser compile-expr))))
+  ;; function calls are never constant
+  (is (-> "/str(3)" parser compile-expr const? not))
+  (is (= "{:a 1, :b 2}" ((-> "/str({:a 1, :b 2})" parser compile-expr)))))
   
+  
+(deftest variables-test
+  (with-input {:a 1}
+    (is (= 1 ((-> "a" parser compile-expr))))
+    (is (= {1 1} ((-> "{a:1}" parser compile-expr)))))
+
+  (with-input {:a 1 :b {:c 3}}
+    (is (= 3 ((-> "b.c" parser compile-expr)))))
+  (is (-> "a" parser compile-expr const? not))
+
+  
+  (with-input {:plus #(+ %1 %2)}
+    (is (= 3 ((-> "plus(1,2)" parser compile-expr)))))
+  )
+
