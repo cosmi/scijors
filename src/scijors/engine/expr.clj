@@ -1,6 +1,7 @@
 (ns scijors.engine.expr
-  (:use [scijors.engine.elements :only [elements-grammar]]
-        [scijors.engine.variables])
+  (:use [scijors.engine.elements]
+        [scijors.engine.variables]
+        [scijors.engine.markers])
   (:require [instaparse.core :as insta]
             [clojure.string :as strings]))
 
@@ -13,7 +14,7 @@ True = <'true'>;
 Integer = #'-?[0-9]+';
 Ratio = #'-?[0-9]+' <'/'> #'[0-9]+';
 Double = #'-?([0-9]+\\.[0-9]*|\\.[0-9]+)';
-String = <dquote> #'(\\\\\"|[^\"])*' <dquote>;
+String = string;
 Keyword = <':'> (sym | ns-sym);
 <ConstItem> = Const | Integer | Ratio | Double | String | Keyword;")
 
@@ -23,6 +24,7 @@ CljNSSymbol = ns-sym;
 CljCoreSymbol = <'/'> sym ;
 <CljSymbol> = CljNSSymbol | CljCoreSymbol;
 Variable = sym;
+Block = <'$'> sym;
 <Symbol> = CljSymbol | Variable;
 ")
 
@@ -79,8 +81,11 @@ Index = OpExpr80 <lsqparen> Expr (<comma> Expr)* <rsqparen>;
 Call = OpExpr80 <lparen> Expr (<comma> Expr)* <rparen>;
 DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
 
-<OpExpr100> = <'('> <ws>? Expr <ws>? <')'> | Item;
+<OpExpr100> = <'('> <ws>? SuperExpr <ws>? <')'> | Item;
 
+FilteredExpr = SuperExpr <pipe> Filter;
+<SuperExpr> = Expr | FilteredExpr;
+Filter = #'(?!a)b';
 ")
 
 (def expr-grammar
@@ -94,15 +99,6 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
 (def compile-expr)
 
 
-
-(defn mark-const [f]
-  (vary-meta f assoc :const true))
-
-(defn const? [f]
-  (-> f meta :const boolean))
-
-(defn const [f]
-  (-> f constantly mark-const))
 
 
 (defmulti compile-expr-impl first)
@@ -125,7 +121,7 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
 (defmethod compile-expr-impl :False [[_]]
   (const false))
 (defmethod compile-expr-impl :String [[_ val]]
-  (const (-> val (strings/replace "\\\"" "\""))))
+  (const (unescape-string val)))
 (defmethod compile-expr-impl :Keyword [[_ val]]
   (const (keyword val)))
 (defmethod compile-expr-impl :Ratio [[_ a b]]
@@ -218,6 +214,11 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
     (fn variable []
       (get-scope-variable kword))))
 
+(defmethod compile-expr-impl :Block [[_ s]]
+  (let [kword (keyword s)]
+    (fn variable []
+      (get-block kword))))
+
 (defmethod compile-expr-impl :DotIndex [[_ expr & s]]
   (let [kword (mapv keyword s)
         expr (compile-expr expr)
@@ -240,3 +241,42 @@ DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
   
 (defn compile-expr [tree]
   (compile-expr-impl (cond-> tree (seq? tree) first)))
+
+
+
+
+
+(defonce filters (atom {}))
+
+(defn create-filter! [nom grammar fun]
+  (let [grammar (-> grammar strings/trim)]
+    (assert (.endsWith grammar ";"))
+    (assert (or
+             (.startsWith grammar (str (name nom) " "))
+             (.startsWith grammar (str (name nom) "="))))
+    (swap! filters assoc nom {:name nom :grammar grammar :fun fun})))
+
+(defmacro deffilter [nom grammar args & body]
+  `(create-filter! ~nom ~grammar (fn ~(-> nom name symbol) ~args ~@body)))
+
+(defmethod compile-expr-impl :FilteredExpr [[_ expr [name & rst :as tree]]]
+  (let [filter (@filters name)]
+    (assert filter (str "No such filter: " name))
+    ((filter :fun) expr tree)))
+
+
+(def get-expr-grammar-
+  (memoize (fn get-expr-grammar [filters]
+             (apply str expr-grammar
+                  
+                  "<Filter> = "
+                  (concat
+                   (interpose "|"
+                              (for [[k,f] filters]
+                                (-> f :name name)))
+                   [";\n"]
+                   (for [[k,f] filters]
+                     (-> f :grammar)))))))
+
+
+(defn get-expr-grammar [] (get-expr-grammar- @filters))

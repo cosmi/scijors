@@ -1,6 +1,7 @@
 (ns scijors.engine.expr-test
   (:use scijors.engine.expr
         clojure.test
+        scijors.engine.markers
         scijors.engine.variables)
   (:require [instaparse.core :as insta]))
 
@@ -89,7 +90,7 @@
                "[1,2,3][1]" 2
                }]
     (doseq [[s v] tests]
-      (testing (str "Parsing: " (prn-str s))
+      (testing (str "Parsing: " (prn-str s) " -> " (parser s))
         (is (-> s parser compile-expr const?))
         (is (= v ((-> s parser compile-expr))))))))
 

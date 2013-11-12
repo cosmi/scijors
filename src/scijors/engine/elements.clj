@@ -23,6 +23,20 @@
 <lbrace> = ws? '{' ws?;
 <hashlbrace> = ws? '#{' ws?;
 <rbrace> = ws? '}' ws?;
+<tag-open> = '{%' ws?;
+
+<tag-close> = ws? '%}';
 <comma> = ws? ',' ws?;
 <colon> = ws? ':' !usym ws?;
-<clj-ws> = comma | ws;")
+<pipe> = ws? '|' !'|' ws?;
+<clj-ws> = comma | ws;
+<dbl-lbrace> = '{{' !'{' ws?;
+<dbl-rbrace> = ws? '}}';
+<end> = <tag-open> <'end'> <tag-close>;
+<string> =  <dquote> #'(\\\\\"|[^\"])*' <dquote>;
+
+")
+
+(defn unescape-string [s]
+  (-> s (strings/replace "\\\"" "\""))
+  )
