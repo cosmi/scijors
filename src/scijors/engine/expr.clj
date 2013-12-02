@@ -1,12 +1,10 @@
 (ns scijors.engine.expr
-  (:use [scijors.engine.elements]
-        [scijors.engine.variables]
-        [scijors.engine.markers])
+  (:use [scijors.engine grammar elements variables markers])
   (:require [instaparse.core :as insta]
             [clojure.string :as strings]))
 
 
-(def const-grammar "
+(defgrammar const-grammar "
 Nil = <'nil'> | <'null'>;
 False = <'false'>;
 True = <'true'>;
@@ -19,7 +17,7 @@ Keyword = <':'> (sym | ns-sym);
 <ConstItem> = Const | Integer | Ratio | Double | String | Keyword;")
 
 
-(def var-grammar "
+(defgrammar var-grammar "
 CljNSSymbol = ns-sym;
 CljCoreSymbol = <'/'> sym ;
 <CljSymbol> = CljNSSymbol | CljCoreSymbol;
@@ -28,7 +26,7 @@ Block = <'$'> sym;
 <Symbol> = CljSymbol | Variable;
 ")
 
-(def struct-grammar "
+(defgrammar struct-grammar "
 Set = <hashlbrace> ( (Expr (<comma> Expr)*) | (ConstItem (<clj-ws> ConstItem)*))?<rbrace>;
 Vector = <lsqparen> ( (Expr (<comma> Expr)*) | (ConstItem (<clj-ws> ConstItem)*))?<rsqparen>;
 Map = <lbrace> ((Expr <colon> Expr) (<comma> Expr <colon> Expr)* |
@@ -37,7 +35,7 @@ Map = <lbrace> ((Expr <colon> Expr) (<comma> Expr <colon> Expr)* |
 <Expr> = Item | OpExpr;"
   )
 
-(def op-grammar "
+(defgrammar op-grammar "
 <OpExpr> = OpExpr00;
 <OpExpr00> = OpExpr05;
 
@@ -88,12 +86,12 @@ FilteredExpr = SuperExpr <pipe> Filter;
 Filter = #'(?!a)b';
 ")
 
-(def expr-grammar
-  (str elements-grammar
-       const-grammar
-       var-grammar
-       struct-grammar
-       op-grammar))
+;; (def expr-grammar
+;;   (str elements-grammar
+;;        const-grammar
+;;        var-grammar
+;;        struct-grammar
+;;        op-grammar))
 
 
 (def compile-expr)
@@ -257,7 +255,10 @@ Filter = #'(?!a)b';
     (swap! filters assoc nom {:name nom :grammar grammar :fun fun})))
 
 (defmacro deffilter [nom grammar args & body]
-  `(create-filter! ~nom ~grammar (fn ~(-> nom name symbol) ~args ~@body)))
+  `(let [grammar# ~grammar]
+     (create-filter! ~nom grammar# (fn ~(-> nom name symbol) ~args ~@body))
+     (defgrammar ~nom grammar#)
+     ))
 
 (defmethod compile-expr-impl :FilteredExpr [[_ expr [name & rst :as tree]]]
   (let [filter (@filters name)]
@@ -265,18 +266,16 @@ Filter = #'(?!a)b';
     ((filter :fun) expr tree)))
 
 
-(def get-expr-grammar-
-  (memoize (fn get-expr-grammar [filters]
-             (apply str expr-grammar
-                  
-                  "<Filter> = "
+(defgrammar filter-list-grammar
+  (fn filter-list-grammar []
+    (when-let [filters (not-empty @filters)]
+      (str "<Filter> = "
+           (apply str
                   (concat
                    (interpose "|"
                               (for [[k,f] filters]
-                                (-> f :name name)))
-                   [";\n"]
-                   (for [[k,f] filters]
-                     (-> f :grammar)))))))
+                                (-> f :name name)))))
+           ";\n"
+           ))))
 
 
-(defn get-expr-grammar [] (get-expr-grammar- @filters))

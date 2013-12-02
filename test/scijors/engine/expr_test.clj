@@ -1,11 +1,9 @@
 (ns scijors.engine.expr-test
-  (:use scijors.engine.expr
-        clojure.test
-        scijors.engine.markers
-        scijors.engine.variables)
+  (:use [scijors.engine grammar expr markers variables]
+        clojure.test)
   (:require [instaparse.core :as insta]))
 
-(def parser (insta/parser expr-grammar :start :Expr))
+(def parser (get-parser :start :Expr))
 
 
 (deftest constants-test
@@ -52,7 +50,8 @@
 
 
 (deftest compile-constants-test
-  (let [tests {"4" 4 "8." 8. "-3" -3 "-.4" -0.4 "-2/4" -1/2
+  (let [tests {"4" 4
+               "8." 8. "-3" -3 "-.4" -0.4 "-2/4" -1/2
                "\"abc\"" "abc"  "\"a\\\"bc\"" "a\"bc"
                "nil" nil "null" nil "false" false "true" true ":a" :a
                ":a/a" :a/a
@@ -90,7 +89,7 @@
                "[1,2,3][1]" 2
                }]
     (doseq [[s v] tests]
-      (testing (str "Parsing: " (prn-str s) " -> " (parser s))
+      (testing (str "Parsing: " (prn-str s) " -> " (parser s :start :Expr))
         (is (-> s parser compile-expr const?))
         (is (= v ((-> s parser compile-expr))))))))
 

@@ -1,8 +1,9 @@
 (ns scijors.engine.elements
+  (:use [scijors.engine.grammar])
   (:require [instaparse.core :as insta]
             [clojure.string :as strings]))
 
-(def elements-grammar "
+(defgrammar elements-grammar "
 <ws> = #'\\s+';
 <backslash> = '\\\\';
 <qsym> = <backslash> #'[a-zA-Z-_0-9\\$?!+*]+' <backslash> ;
@@ -25,7 +26,7 @@
 <rbrace> = ws? '}' ws?;
 <tag-open> = '{%' ws?;
 
-<tag-close> = ws? '%}';
+<tag-close> = ws? ('%}' | '}');
 <comma> = ws? ',' ws?;
 <colon> = ws? ':' !usym ws?;
 <pipe> = ws? '|' !'|' ws?;

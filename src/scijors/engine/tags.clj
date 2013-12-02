@@ -2,7 +2,6 @@
   (:use [scijors.engine text variables errors elements]))
 
 
-
 (deftag :TagBlock "
 TagBlock = TagBlockBegin Content (<end> | <tag-open> <'endblock'> (<ws> <sym>)? <tag-close>) ;
 <TagBlockBegin> = <tag-open> <'block'> <ws> sym <tag-close>;"
@@ -15,6 +14,17 @@ TagBlock = TagBlockBegin Content (<end> | <tag-open> <'endblock'> (<ws> <sym>)? 
       ((get-block sym)))
     ))
 
+
+(deftag :TagCallBlock "
+TagCallBlock = <tag-open> <'block'> <ws> sym <tag-close>;"
+  [_ sym & content]
+  (let [content (compile-tags content)]
+    (when-not (nil? (get-in @*template-params* [:blocks sym]))
+      (throw (scijors-exception "Block redefined: " sym {:block sym})))
+    (swap! *template-params* assoc-in [:blocks sym] content)
+    (fn block-emitter []
+      ((get-block sym)))
+    ))
 
 
 
