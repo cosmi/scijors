@@ -31,6 +31,12 @@
 (deftest template-test
   (let [template (load-template "content.html"
                                 test-template-loader)]
-    (is (= "<html><head></head><body>\nTest value: 2\n</body></html>\n" (template {:v 2})))
+    (is (= "<html><head></head><body>\nTest value: v=2\nThis val val: v=3\n</body></html>\n" (template {:v 2})))
 
-    ))
+    )
+  (let [template (load-template "wrapper.html"
+                                test-template-loader)]
+    (is (= "<html><head></head><body>\nSome other val: x=\nSome another val: v=3\n</body></html>\n" (template {:v 2})))
+
+    )
+  )

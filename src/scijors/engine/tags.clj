@@ -1,22 +1,37 @@
 (ns scijors.engine.tags
-  (:use [scijors.engine text variables errors elements]))
+  (:use [scijors.engine text variables errors elements commons]))
 
 
 (deftag :TagBlock "
 TagBlock = TagBlockBegin Content (<end> | <tag-open> <'endblock'> (<ws> <sym>)? <tag-close>) ;
-<TagBlockBegin> = <tag-open> <'block'> <ws> sym <tag-close>;"
-  [_ sym & content]
-  (let [content (compile-tags content)]
+TagBlockBegin = <tag-open> <'block'> <ws> sym
+                  (<ws> <'with'> <ws> ('only' <ws>)?  AssocList)? <tag-close>;"
+  [_ [TagBlockBegin sym only? assoc-list] & content]
+  (assert (= TagBlockBegin :TagBlockBegin))
+  (let [assoc-list (cond->> assoc-list
+                            (and only? (not= only? "only"))
+                            (cons only?))
+        only? (when (and only? (= only? "only")))
+        assoc-list (when assoc-list (parse-assoc-list assoc-list))
+        content (compile-tags content)]
     (when-not (nil? (get-in @*template-params* [:blocks sym]))
       (throw (scijors-exception "Block redefined: " sym {:block sym})))
     (swap! *template-params* assoc-in [:blocks sym] content)
-    (fn block-emitter []
-      ((get-block sym)))
+    ;; TODO: if extends, the top level block should throw exception if defined with 'with'
+
+    (if assoc-list
+      (fn block-emitter []
+        (let [assc (assoc-list)]
+          (with-scope (apply-assoc-list-resp
+                       (if only? {} (get-scope)) assc)
+            ((get-block sym)))))
+      (fn block-emitter []
+        ((get-block sym))))
     ))
 
 
 (deftag :TagCallBlock "
-TagCallBlock = <tag-open> <'block'> <ws> sym <tag-close>;"
+TagCallBlock = <tag-open> <'callblock'> <ws> sym <tag-close>;"
   [_ sym & content]
   (let [content (compile-tags content)]
     (when-not (nil? (get-in @*template-params* [:blocks sym]))

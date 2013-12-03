@@ -36,7 +36,6 @@
 
 (defn- prepare-template [filename template-provider]
   (let [template (template-provider filename)
-        _ (prn :TMPL template)
         root (get-root filename)
         mixins (->> (template :mixins)
                     (map #(relative-filename root %))
@@ -74,7 +73,6 @@
          ([input block]
             (binding [*block-scope* blocks
                       *input-scope* input]
-              (prn *block-scope*)
               ((get-block block))
                           ))
          ([input] (template input :root))))))

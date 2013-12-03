@@ -23,6 +23,8 @@
 (defn get-scope-variable [kword]
   (get *input-scope* kword)
   )
+(defn get-scope []
+  *input-scope*)
 
 (defn get-block [kword]
   (get *block-scope* kword))

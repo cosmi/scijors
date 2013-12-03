@@ -1,6 +1,7 @@
 (ns scijors.engine.text
   (:use [scijors.engine
-         [elements :only [elements-grammar]]
+         grammar
+         [elements]
          variables
          expr
          markers
@@ -11,16 +12,16 @@
 
 (defonce tags (atom {}))
 
-(def ^:private get-grammar
-  (memoize (fn get-grammar [tags]
-             (apply str
-                    "<Content> = Tag*;"
-                    (get-expr-grammar)
-                    "<Tag> = "
-                    (concat
-                     (->> tags vals (map :name) (map name) (interpose " | "))
-                     [";"]
-                     (->> tags vals (map :grammar)))))))
+(defgrammar content-grammar
+  "<Content> = Tag*;")
+
+(defgrammar tag-grammar
+  (fn tag-grammar []
+    (when-let [tags (not-empty @tags)]
+      (str "<Tag> = "
+           (->> tags vals (map :name) (map name) (interpose " | ") (apply str))
+           ";\n"
+           ))))
 
 
 (defn create-tag! [nom grammar fun]
@@ -28,19 +29,22 @@
   (swap! tags assoc nom {:name nom :grammar grammar :fun fun}))
 
 (defmacro deftag [nom grammar args & body]
-  `(create-tag! ~nom ~grammar (fn ~(-> nom name symbol) [~args] ~@body)))
+  `(let [grammar# ~grammar]
+     (create-tag! ~nom grammar# (fn ~(-> nom name symbol) [~args] ~@body))
+     (defgrammar ~nom grammar#)
+     ))
 
 
-(create-tag! :Text
+(deftag :Text
              "Text = #'[^{]+' | #'\\{[^#%{]';"
-             (fn text [[_ txt]]
-               (const txt)))
+             [_ txt]
+             (const txt))
 
-(create-tag! :ExprTag
+(deftag :ExprTag
              "ExprTag = <dbl-lbrace> SuperExpr <dbl-rbrace>;"
-             (fn expr-tag [[_ expr]]
-               (let [expr (compile-expr expr)]
-                 (wrap-escape expr))))
+             [_ expr]
+             (let [expr (compile-expr expr)]
+               (wrap-escape expr)))
 
 
 (defn compile-tag [tree]
@@ -49,15 +53,6 @@
         tag (@tags tag)]
     (assert tag (str "No such tag: " tag))
     ( (tag :fun) tree)))
-
-(def ^:private get-parser-memo
-  (memoize (fn get-parser-memo [tags]
-             (insta/parser (get-grammar tags) :start :Content))))
-
-
-(defn get-parser []
-  (get-parser-memo @tags))
-
 
 
 

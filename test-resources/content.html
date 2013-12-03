@@ -1,4 +1,6 @@
 {% extends "wrapper.html" %}
 
 
-{% block content %}Test value: {{v}}{% end %}
+{% block content %}Test value: v={{v}}{% end %}
+
+{%block subcontent}This val val: v={{v}}{%endblock}

@@ -1,5 +1,5 @@
 (ns scijors.engine.text-test
-  (:use [scijors.engine text markers]
+  (:use [scijors.engine grammar text filters markers]
         [clojure.test]))
 
 
