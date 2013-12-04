@@ -13,7 +13,7 @@
 (defonce tags (atom {}))
 
 (defgrammar content-grammar
-  "<Content> = Tag*;")
+  "Content = Tag*;")
 
 (defgrammar tag-grammar
   (fn tag-grammar []
@@ -48,18 +48,23 @@
 
 
 (defn compile-tag [tree]
-  (let [tree (cond-> tree (seq? tree) first )
-        [tag & rst] tree
-        tag (@tags tag)]
-    (assert tag (str "No such tag: " tag))
-    ( (tag :fun) tree)))
+  (when-let [tag-fn (let [tree (cond-> tree (seq? tree) first )
+                          [tag & rst] tree
+                          tag (@tags tag)]
+                      (assert tag (str "No such tag: " tag))
+                      ( (tag :fun) tree))]
+    (-> tag-fn
+        (mark-source-tree tree))))
 
 
 
 (defn compile-tags [tags-list]
-  (let [tags (->> tags-list
+  (let [tags (-> tags-list
+                 (cond->> (= :Content (first tags-list))
+                          (drop 1))
+                 (->>
                   (map compile-tag)
-                  (remove nil?)
+                  (remove nil?))
                   vec)]
     (fn template []
       (->> tags

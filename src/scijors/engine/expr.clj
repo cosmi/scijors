@@ -102,7 +102,6 @@ Filter = #'(?!a)b';
 (defmulti compile-expr-impl first)
 
 (defmethod compile-expr-impl :default [input]
-  (prn "Dispatch error" input)
   (throw (Exception.)))
 
 
@@ -238,7 +237,8 @@ Filter = #'(?!a)b';
       (apply (expr) (map #(%) args)))))
   
 (defn compile-expr [tree]
-  (compile-expr-impl (cond-> tree (seq? tree) first)))
+  (-> (compile-expr-impl (cond-> tree (seq? tree) first))
+      (mark-source-tree tree)))
 
 
 

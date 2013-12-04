@@ -31,12 +31,17 @@
 (deftest template-test
   (let [template (load-template "content.html"
                                 test-template-loader)]
-    (is (= "<html><head></head><body>\nTest value: v=2\nThis val val: v=3\n</body></html>\n" (template {:v 2})))
-
-    )
+    (is (= (test-template-loader "outputs/content1.html") (template {:v 2 :a 1}))))
   (let [template (load-template "wrapper.html"
                                 test-template-loader)]
-    (is (= "<html><head></head><body>\nSome other val: x=\nSome another val: v=3\n</body></html>\n" (template {:v 2})))
+    (is (= (test-template-loader "outputs/wrapper1.html") (template {:v 2 :a 2 :b :a})))))
 
-    )
-  )
+
+
+
+(deftest multi-test
+  (let [template (load-template "multi.html"
+                                test-template-loader)]
+    (is (= (test-template-loader "outputs/multi1.html") (template {})))))
+
+

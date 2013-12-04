@@ -25,8 +25,9 @@
 <hashlbrace> = ws? '#{' ws?;
 <rbrace> = ws? '}' ws?;
 <tag-open> = '{%' ws?;
-
 <tag-close> = ws? ('%}' | '}');
+<BT> = tag-open;
+<ET> = tag-close;
 <comma> = ws? ',' ws?;
 <colon> = ws? ':' !usym ws?;
 <pipe> = ws? '|' !'|' ws?;
