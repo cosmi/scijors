@@ -1,0 +1,12 @@
+{%with v = 1}v={{v}}{%end}
+{%if true}yes{%else}no{%end}
+{%if nil}yes{%else}no{%end}
+{%if false}yes{%else}no{%end}
+{%if []}yes{%else}no{%end}
+{%switch :a case :b}:b{%else}:a{%end}
+{%switch nil or :a case :b}:b{%case :a}:a{%end}
+{%with x = :b}{%switch x case :b}:b{%else}:a{%end}{%end}
+{%%{%with x = :b}{%switch x case :b}:b{%else}:a{%end}{%end}%%}
+{%for i index j in [1,2,3]}{{j}}-{{i}}{%interpose%}|{%end%}
+{%for i index j in nil}{{j}}-{{i}}{%interpose%}|{%else}nada{%end%}
+{%switch :a case :b}:b{%case :a, :c}:a{%end}

@@ -1,0 +1,12 @@
+v=1
+yes
+no
+no
+yes
+:a
+:a
+:b
+{%with x = :b}{%switch x case :b}:b{%else}:a{%end}{%end}
+0-1|1-2|2-3
+nada
+:a

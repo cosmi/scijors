@@ -86,7 +86,6 @@ TagIf =  TagIfIf TagIfElsif* TagIfElse? <tag-open> (<'end'> | <'endif'>) <tag-cl
 <TagIfElse> = <tag-open> 'else' <tag-close> Content ;"
   [_ & cases]
   (let [cases (partition-all 2 cases)
-        _ (prn :AA cases)
         cases (map (fn [[expr,content]]
                      [(if (= expr "else") (constantly true) (compile-expr expr))
                       (compile-tags content)]) cases)]
@@ -175,5 +174,9 @@ TagForInterpose = <BT> <'interpose'> <ET> Content;
              (map #(fun (key %) (val %)) v)
              (map-indexed fun v))
             interp (interpose interp))
-           (apply str)))))))
+           (apply str)))
+        (when else (else))))))
            
+
+;; TODO:
+;; - gen-id
