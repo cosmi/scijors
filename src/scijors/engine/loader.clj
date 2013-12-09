@@ -52,28 +52,58 @@
 
     )
   )
-  
+
+(defn classpath-loader 
+  [^String s]
+  (io/resource
+   (if (.startsWith s "/")
+     (subs s 1) s)))
+
+(defn file-loader 
+  [^String s]
+  (prn :dupa s)
+  (io/as-file
+   (if (.startsWith s "/")
+     (subs s 1) s)))
+
+
 
 (defn load-template
   ([filename]
-     (load-template filename (fn [^String s]
-                               {:pre [(.startsWith s "/")]}
-                               (when-let [res (io/resource (subs s 1))]
-                                 (slurp res)))))
+     (load-template filename classpath-loader))
   ([filename resource-provider]
-     (let [get-template (memoize
+     (let [dependencies (atom #{})
+           get-template (memoize
                          (fn [fname]
                            (if-let [res (resource-provider fname)]
-                             (compile-template res)
+                             (->
+                               (if (string? res)
+                                 res
+                                 (do
+                                   (swap! dependencies conj res)
+                                   (slurp res)))
+                               compile-template)
                              (throw (scijors-exception "No such file: " fname)))))
            prepared-template
            (prepare-template (relative-filename "/" filename) get-template)
-           blocks (prepared-template :blocks)]
-       (fn template
+           blocks (prepared-template :blocks)
+           dependencies (-> @dependencies
+                            (map (fn [url]
+                                   (when (or
+                                          (and (= java.net.URL (class url))
+                                               (= "file" (.getProtocol url)))
+                                          (= java.io.File (class url)))
+                                     (let [file (io/as-file url)]
+                                       [file (.lastModified file)]))))
+                            (into {}))]
+       (->
+        (fn template
          ([input block]
             (binding [*block-scope* blocks
                       *input-scope* input]
               ((get-block block))
                           ))
-         ([input] (template input :root))))))
+         ([input] (template input :root)))
+        (vary-meta assoc :dependencies dependencies)
+        ))))
      
