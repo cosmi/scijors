@@ -1,7 +1,6 @@
 (ns scijors.core
   (:require [scijors.engine.loader :as loader]
-            [clojure.string :as strings]
-            [scijors.debug :as debug]))
+            [clojure.string :as strings]))
 
 
 
