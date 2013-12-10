@@ -7,9 +7,11 @@
 (set-default-loader! (-> loader/file-loader
                          (wrap-prefix "test-resources/")))
 
-(deftest load-multi
-  (is (= ((get-template "multi.html") {})
+(deftest load-multi-test
+  (is (= ((create-template "multi.html") {})
          (slurp "test-resources/outputs/multi1.html"))))
 
+(deftest load-error-test
+  (is (thrown? clojure.lang.ExceptionInfo ((create-template "error.html") {}))))
 
   

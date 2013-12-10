@@ -1,6 +1,7 @@
 (ns scijors.core
   (:require [scijors.engine.loader :as loader]
-            [clojure.string :as strings]))
+            [clojure.string :as strings]
+            [scijors.debug :as debug]))
 
 
 
@@ -13,61 +14,34 @@
    loader/classpath-loader
    (wrap-prefix "templates/")))
 
-(def ^:private templates-cache (atom {}))
 
-(defn get-cached-template [path]
-  (get @templates-cache path))
-
-(defn reload-cache "Reloads all cached templates using current default-loader."
-  [cache-data]
-  (->>
-   (for [[path template] cache-data]
-     [path
-      (loader/load-template path default-loader)])
-   (into {})))
-
-(defn set-default-loader! [new-loader & {:keys [reload-cache keep-cache]}]
+(defn set-default-loader! [new-loader]
   (alter-var-root #'default-loader (constantly new-loader))
-  (when-not keep-cache
-    (if reload-cache
-      (swap! templates-cache reload-cache)
-      (reset! templates-cache {})
-      ))
   new-loader)
 
-(defn devmode-get-template [path loader]
-  (-> templates-cache
-      (swap!
-       (fn [cache]
-         (let [cached (get cache path)
-               requested-deps
-               (->> cached meta :dependencies
-                    (map (fn [[file ts]]
-                           [file (.lastModified file)]))
-                    (into {}))]
-           (if (-> cached meta :dependencies (= requested-deps))
-             cache
-             (let [template (loader/load-template path loader)]
-               (cond-> cache template
-                       (assoc path template )))))))
-      (get path)))
+(defn prod-create-template [path loader]
+  (loader/load-template path (or loader default-loader)))
 
-(defn get-template [path & {:keys [devmode loader no-cache] :or {loader default-loader}}]
-  (cond no-cache
-        (loader/load-template path loader)
-        devmode
-        (devmode-get-template path loader)
-        :else
-        (if-let [cached (when-not no-cache (get-cached-template path))]
-          cached
-          (-> templates-cache
-              (swap!
-               (fn [cache]
-                 (if (get cache path)
-                   cache
-                   (let [template (loader/load-template path loader)]
-                     (cond-> cache
-                             template
-                             (assoc path template))))))
-              (get path)))))
-        
+(defn dev-create-template [path loader]
+  (let [cache (atom (prod-create-template path loader))]
+    (fn [data]
+      (let [requested-deps
+            (->> @cache meta :dependencies
+                 (map (fn [[file ts]]
+                        [file (.lastModified file)]))
+                 (into {}))]
+        ((swap! cache
+                (fn [old]
+                  (if (not= requested-deps (-> old meta :dependencies))
+                    (prod-create-template path loader)
+                    old)))
+         data))
+      )))
+
+
+
+
+(defn create-template [path & {:keys [devmode loader] }]
+  (if devmode
+    (dev-create-template path loader)
+    (prod-create-template path loader)))

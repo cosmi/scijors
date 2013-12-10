@@ -1,5 +1,5 @@
 (ns scijors.engine.tags
-  (:use [scijors.engine expr markers text variables errors elements commons]))
+  (:use [scijors.engine expr markers text variables elements commons]))
 
 
 
@@ -8,41 +8,41 @@
 TagBlock = TagBlockBegin Content (<end> | <tag-open> <'endblock'> (<ws> <sym>)? <tag-close>) ;
 TagBlockBegin = <tag-open> <'block'> <ws> sym
                  (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
-  [_ [TagBlockBegin sym with-assoc-list]  content]
+  [_ [TagBlockBegin sym with-assoc-list]  content :as tree]
   (assert (= TagBlockBegin :TagBlockBegin))
-  (let [content (compile-tags content)]
-    (when-not (nil? (get-in @*template-params* [:blocks sym]))
-      (throw (scijors-exception "Block redefined: " sym {:block sym})))
-    (swap! *template-params* assoc-in [:blocks sym] content)
-    ;; TODO: if extends, the top level block should throw exception if defined with 'with'
-
-    (cond->
-     (fn block-emitter []
-       ((get-block sym)))
-     with-assoc-list
-     (wrap-assoc-list with-assoc-list))))
+  (in-block sym
+            (let [content (compile-tags content)]
+              (register-block! sym tree content)
+              ;; TODO: if extends, the top level block should throw exception if defined with 'with'
+              (cond->
+               (fn block-emitter []
+                 (in-block sym
+                           ((get-block sym))))
+               with-assoc-list
+               (wrap-assoc-list with-assoc-list)))))
 
 
 (deftag :TagCallBlock "
 TagCallBlock = <tag-open> <'callblock'> <ws> sym (<'with'> <ws> WithAssocList)? <tag-close>;"
-  [_ sym with-assoc-list]
+  [_ sym with-assoc-list :as tree]
   (cond->
      (fn block-emitter []
        (try
-         ((get-block sym))
+         (in-block sym ((get-block sym)))
          (catch NullPointerException e
-           (throw (Exception. (format "No such block: '%s'" (name sym)) )))))
+           (throw (scijors-tree-exception tree (format "No such block: '%s'" (name sym)) )))))
      with-assoc-list
      (wrap-assoc-list with-assoc-list)))
 
 
 (deftag :TagDefBlock "
 TagDefBlock = <tag-open> <'defblock'> <ws> sym <tag-close> Content (<end> | <tag-open> <'enddefblock'> (<ws> <sym>)? <tag-close>);"
-  [_ sym content]
-  (when-not (nil? (get-in @*template-params* [:blocks sym]))
-    (throw (scijors-exception "Block redefined: " sym {:block sym})))
-  (swap! *template-params* assoc-in [:blocks sym] content)
-  nil)
+  [_ sym content :as tree]
+  (in-block sym
+            (when-not (nil? (get-in @*template-params* [:blocks sym]))
+              (throw (scijors-tree-exception  tree (str "Block redefined: " sym))))
+            (swap! *template-params* assoc-in [:blocks sym] content)
+            nil))
 
 
 
@@ -50,10 +50,10 @@ TagDefBlock = <tag-open> <'defblock'> <ws> sym <tag-close> Content (<end> | <tag
 (deftag :TagExtends "
 TagExtends = <tag-open> <'extends'> <ws> string <tag-close>;
 "
-  [_ filename]
+  [_ filename :as tree]
   (let [filename (unescape-string filename)]
     (when-not (nil? (get @*template-params* :extends))
-      (throw (scijors-exception "Extend declared second time: " filename {:extend filename})))
+      (throw  (scijors-tree-exception tree (str "Extend called twice"))))
     (swap! *template-params* update-in [:mixins] conj filename)
     (swap! *template-params* assoc :extends filename)
     nil))
@@ -110,7 +110,7 @@ TagSwitchElse = <BT> <'else'> <ET> Content ;"
                       exprs (map compile-expr exprs)
                       content (compile-tags content)]
                   (when-let [expr (some (complement const?) exprs)]
-                    (throw (scijors-exception (get-source-tree expr) "Not a constant")))
+                    (throw (scijors-tree-exception expr "Not a constant")))
                   (mapv #(vector (%) content) exprs)))
                (apply concat)
                (into {}))

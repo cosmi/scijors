@@ -1,5 +1,6 @@
 (ns scijors.engine.markers
-
+  (:require [clojure.walk :as walk]
+            [clojure.string :as strings])
   )
 ;; TODO: rename to scijors.engine.metadata?
 
@@ -24,14 +25,39 @@
 
 
 (defn mark-source-tree [f tree]
-  (vary-meta f assoc ::source tree))
+  (vary-meta f assoc ::source-tree tree))
 
 (defn get-source-tree [f]
-  (-> f meta ::source))
+  (-> f meta ::source-tree))
+
+
+(defn assoc-source [tree filename string]
+  (walk/prewalk #(cond-> % (sequential? %)
+                         (vary-meta assoc
+                                    ::source string
+                                    ::filename filename)) tree))
 
 
 
+(defn get-source-string-data [tree]
+  (let [m (meta tree)
+        start (:instaparse.gll/start-index m)
+        end (:instaparse.gll/end-index m)
+        text (::source m)
+        pres (strings/split-lines (subs text 0 (min (count text) (inc start))))
+        ]
+    {:col (count (last pres))
+     :row (count pres)
+     :text (subs text start end)
+     :source text
+     :filename (::filename m)}
+    ))
 
 (defn scijors-tree-exception [tree msg]
-  (ex-info (format "Error: '%s' caused by: %s" msg tree) {:tree tree :msg msg
-                                                          :type :scijors-tree-exception}))
+  (let [{:keys [col row text filename] :as data} (get-source-string-data tree)] 
+    (ex-info (format "Error at file: \"%s\" row:%d, col:%d, starting with \"%s\":\n%s"
+                     filename col row (subs text 0 (min (count text) 50))
+                     msg)
+             (merge data
+                    {:tree tree :msg msg
+                     :type :scijors-tree-exception}))))

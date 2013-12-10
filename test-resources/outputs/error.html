@@ -1,5 +1,5 @@
 (ns scijors.engine.loader
-  (:use [scijors.engine compiler variables]
+  (:use [scijors.engine compiler variables errors]
         [clojure.java.io :as io]))
 
 
@@ -61,6 +61,7 @@
 
 (defn file-loader 
   [^String s]
+  (prn :dupa s)
   (io/as-file
    (if (.startsWith s "/")
      (subs s 1) s)))
@@ -75,14 +76,14 @@
            get-template (memoize
                          (fn [fname]
                            (if-let [res (resource-provider fname)]
-                             (let [res
-                                   (if (string? res)
-                                     res
-                                     (do
-                                       (swap! dependencies conj res)
-                                       (slurp res)))]
-                               (in-file fname (compile-template res)))
-                             (throw (Exception. (str "No such file: " fname))))))
+                             (->
+                               (if (string? res)
+                                 res
+                                 (do
+                                   (swap! dependencies conj res)
+                                   (slurp res)))
+                               compile-template)
+                             (throw (scijors-exception "No such file: " fname)))))
            prepared-template
            (prepare-template (relative-filename "/" filename) get-template)
            blocks (prepared-template :blocks)
