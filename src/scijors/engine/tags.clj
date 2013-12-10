@@ -139,6 +139,11 @@ TagVerbatim = <'{%%'> (#'%%[^}]' | #'%[^%]' | #'[^%]+')* <'%%}'>;"
   [_ & content]
   (constantly (apply str content)))
 
+(deftag :TagId "
+TagId = <BT> <'id'> <ET>;"
+  [_]
+  (constantly (hash *filename*)))
+
 (deftag :TagFor "
 TagFor = TagForStart Content (TagForElse | TagForInterpose TagForElse?)? <BT> (<'end'> | <'endfor'>) <ET>;
 TagForStart = <BT> <'for'> <ws> (TagForSym (<ws> TagForIndex)? | TagForIndex) <ws> <'in'> <ws> Expr <ET>;

@@ -90,15 +90,17 @@
            prepared-template
            (prepare-template (relative-filename "/" filename) get-template)
            blocks (prepared-template :blocks)
-           dependencies (-> @dependencies
-                            (map (fn [url]
-                                   (when (or
-                                          (and (= java.net.URL (class url))
-                                               (= "file" (.getProtocol url)))
-                                          (= java.io.File (class url)))
-                                     (let [file (io/as-file url)]
-                                       [file (.lastModified file)]))))
-                            (into {}))]
+           dependencies (->> @dependencies
+                             vec
+                             (map (fn [url]
+                                    (when (or
+                                           (and (= java.net.URL (class url))
+                                                (= "file" (.getProtocol url)))
+                                           (= java.io.File (class url)))
+                                      (let [file (io/as-file url)]
+                                        [file (.lastModified file)]))))
+                             doall
+                             (into {}))]
        (when-let [err-nom (some (fn [[nom content]]
                                     (when (nil? content) nom)) blocks)]
          (throw (Exception. (format "Block '%s' is used but is not declared!" err-nom))))
