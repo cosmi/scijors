@@ -71,12 +71,12 @@ DivInt = OpExpr70 (<ws> <'//'> <ws> OpExpr70) +;
 
 <OpExpr70> = UnaryMinus | Not | Deref | OpExpr80;
 UnaryMinus = <'-'> !#'[0-9]' <ws>? OpExpr70;
-Not = <'!'> <ws>? OpExpr70;
+Not = (<'!'> | <'not'> <ws>) <ws>? OpExpr70;
 Deref = <'@'> <ws>? OpExpr70;
 
 <OpExpr80> = Index | Call | DotIndex | OpExpr100;
 Index = OpExpr80 <lsqparen> Expr (<comma> Expr)* <rsqparen>;
-Call = OpExpr80 <lparen> Expr (<comma> Expr)* <rparen>;
+Call = OpExpr80 <lparen> (Expr (<comma> Expr)*)? <rparen>;
 DotIndex = OpExpr80  (<ws>? <'.'> <ws>? sym )+;
 
 <OpExpr100> = <'('> <ws>? SuperExpr <ws>? <')'> | Item;
@@ -102,8 +102,7 @@ Filter = #'(?!a)b';
 (defmulti compile-expr-impl first)
 
 (defmethod compile-expr-impl :default [input]
-  (throw (Exception.)))
-
+  (throw (Exception. (prn-str input))))
 
 (defmethod compile-expr-impl :Integer [[_ val]]
   (const (Long/parseLong val)))

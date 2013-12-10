@@ -13,7 +13,7 @@
 (defonce tags (atom {}))
 
 (defgrammar content-grammar
-  "Content = Tag*;")
+  "Content = (Tag+ | '');")
 
 (defgrammar tag-grammar
   (fn tag-grammar []
@@ -64,8 +64,9 @@
                           (drop 1))
                  (->>
                   (map compile-tag)
-                  (remove nil?))
-                  vec)]
+                  (remove nil?)
+                  doall
+                  vec))]
     (fn template []
       (->> tags
            (map #(%))

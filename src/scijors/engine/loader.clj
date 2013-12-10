@@ -27,7 +27,9 @@
 
 (defn- mixin-template [template mixin]
   (-> template
-      (assoc :blocks (merge (dissoc (mixin :blocks) :root) (template :blocks)))))
+      (assoc :blocks (merge-with #(or %2 %1)
+                                 (dissoc (mixin :blocks) :root)
+                                 (template :blocks)))))
 
 (defn- extend-template [parent-template child-template]
    (-> child-template
@@ -39,14 +41,15 @@
         root (get-root filename)
         mixins (->> (template :mixins)
                     (map #(relative-filename root %))
-                    (map template-provider )
-                    reverse)
+                    (map #(prepare-template % template-provider))
+                    )
         template
         (if-not (template :extends)
           template
-          (->
-           (->> template :extends (relative-filename root) template-provider)
-           (extend-template template)))
+          (-> template :extends 
+              (->> (relative-filename root))
+              (prepare-template template-provider)
+              (extend-template template)))
         template (reduce mixin-template template mixins)]
     template
 
@@ -81,7 +84,8 @@
                                      (do
                                        (swap! dependencies conj res)
                                        (slurp res)))]
-                               (in-file fname (compile-template res)))
+                               (assoc (in-file fname (compile-template res))
+                                 :filename fname))
                              (throw (Exception. (str "No such file: " fname))))))
            prepared-template
            (prepare-template (relative-filename "/" filename) get-template)
@@ -95,6 +99,9 @@
                                      (let [file (io/as-file url)]
                                        [file (.lastModified file)]))))
                             (into {}))]
+       (when-let [err-nom (some (fn [[nom content]]
+                                    (when (nil? content) nom)) blocks)]
+         (throw (Exception. (format "Block '%s' is used but is not declared!" err-nom))))
        (->
         (fn template
          ([input block]

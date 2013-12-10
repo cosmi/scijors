@@ -1,6 +1,5 @@
 (ns scijors.engine.markers
-  (:require [clojure.walk :as walk]
-            [clojure.string :as strings])
+  (:require [clojure.string :as strings])
   )
 ;; TODO: rename to scijors.engine.metadata?
 
@@ -32,11 +31,14 @@
 
 
 (defn assoc-source [tree filename string]
-  (walk/prewalk #(cond-> % (sequential? %)
-                         (vary-meta assoc
-                                    ::source string
-                                    ::filename filename)) tree))
-
+  (if-not (vector? tree) tree
+          (let [metadata (meta tree)]
+            (->
+             (mapv #(assoc-source % filename string) tree)
+             (with-meta (assoc metadata
+                          ::source string
+                          ::filename filename))))))
+  
 
 
 (defn get-source-string-data [tree]

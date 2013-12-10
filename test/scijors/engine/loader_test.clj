@@ -24,7 +24,7 @@
 
 (defn test-template-loader
   ([s]
-     (let [file (io/as-file (str "test-resources/" s))]
+     (let [file (io/as-file (str "/Users/cosmi/projects/scijors/test-resources/" s))]
        (when (.exists file)
          file))))
 
@@ -32,6 +32,9 @@
   (let [template (load-template "content.html"
                                 test-template-loader)]
     (is (= (slurp (test-template-loader "outputs/content1.html")) (template {:v 2 :a 1}))))
+  (let [template (load-template "subcontent.html"
+                                test-template-loader)]
+    (is (= (slurp (test-template-loader "outputs/subcontent1.html")) (template {:v 2 :a 1}))))
   (let [template (load-template "wrapper.html"
                                 test-template-loader)]
     (is (= (slurp (test-template-loader "outputs/wrapper1.html"))

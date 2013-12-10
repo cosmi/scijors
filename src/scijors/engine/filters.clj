@@ -42,3 +42,14 @@
                (compile-expr expr))]
       expr))
 
+
+(deffilter :FilterFormat "FilterFormat = <'format'> <ws> String;" [expr [_ s]]
+  (let [expr (compile-expr expr)
+        s (compile-expr s)]
+    (assert (const? s))
+    (let [fmt (s)
+          fun #(format fmt (expr))]
+      (if (const? expr)
+        (const (fun))
+        fun))))
+

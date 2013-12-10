@@ -23,8 +23,11 @@ TagBlockBegin = <tag-open> <'block'> <ws> sym
 
 
 (deftag :TagCallBlock "
-TagCallBlock = <tag-open> <'callblock'> <ws> sym (<'with'> <ws> WithAssocList)? <tag-close>;"
+TagCallBlock = <tag-open> <'callblock'> <ws> sym (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
   [_ sym with-assoc-list :as tree]
+
+  ;; Mark that block
+  (swap! *template-params* update-in [:blocks sym] identity)
   (cond->
      (fn block-emitter []
        (try
@@ -39,9 +42,8 @@ TagCallBlock = <tag-open> <'callblock'> <ws> sym (<'with'> <ws> WithAssocList)? 
 TagDefBlock = <tag-open> <'defblock'> <ws> sym <tag-close> Content (<end> | <tag-open> <'enddefblock'> (<ws> <sym>)? <tag-close>);"
   [_ sym content :as tree]
   (in-block sym
-            (when-not (nil? (get-in @*template-params* [:blocks sym]))
-              (throw (scijors-tree-exception  tree (str "Block redefined: " sym))))
-            (swap! *template-params* assoc-in [:blocks sym] content)
+            (let [content (compile-tags content)]
+              (register-block! sym tree content))
             nil))
 
 
@@ -82,7 +84,7 @@ TagWith = <tag-open> (<'with'> | <'let'>) <ws> WithAssocList <tag-close> Content
 (deftag :TagIf "
 TagIf =  TagIfIf TagIfElsif* TagIfElse? <tag-open> (<'end'> | <'endif'>) <tag-close>;
 <TagIfIf>= <tag-open> <'if'> <ws> Expr <tag-close> Content;
-<TagIfElsif> = <tag-open> (<'elsif'> | <'elif'> | <'else'> <ws> <'if'>) <ws> Expr <tag-close> Content;
+<TagIfElsif> = <tag-open> (<'elseif'> |<'elsif'> | <'elif'> | <'else'> <ws> <'if'>) <ws> Expr <tag-close> Content;
 <TagIfElse> = <tag-open> 'else' <tag-close> Content ;"
   [_ & cases]
   (let [cases (partition-all 2 cases)
@@ -152,7 +154,8 @@ TagForInterpose = <BT> <'interpose'> <ET> Content;
         interp (when interp (compile-tags interp))
         else (extras :TagForElse)
         else (when else (compile-tags else))
-        [expr & assign] (reverse start)
+        expr (last start)
+        assign (butlast start)
         expr (compile-expr expr)
         assign (into {} assign)
         variable (assign :TagForSym)

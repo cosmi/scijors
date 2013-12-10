@@ -18,3 +18,12 @@
   (is (safe? (tag-compiler "{{a}}")))
   (is (safe? (tag-compiler "{{a |safe}}")))
   )
+
+
+(deftest if-tag-compiler
+  (is (= "1" ( (tag-compiler "{% if true %}1{%endif%}"))))
+  (is (= nil ( (tag-compiler "{% if false %}1{%endif%}"))))
+  
+  (is (= "1" ( (tag-compiler "{% if true %}1{%else%}0{%endif%}"))))
+  (is (= "0" ( (tag-compiler "{% if false %}1{%else%}0{%endif%}"))))
+  )
