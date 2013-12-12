@@ -23,20 +23,20 @@
 
 (defn dev-create-template [path loader]
   (let [cache (atom (prod-create-template path loader))]
-    (fn [data]
+    (fn [data & [block]]
       (let [requested-deps
             (->> @cache meta :dependencies
                  (map (fn [[file ts]]
                         [file (.lastModified file)]))
                  (into {}))]
-        ((swap! cache
-                (fn [old]
-                  (if (not= requested-deps (-> old meta :dependencies))
-                    (prod-create-template path loader)
-                    old)))
-         data))
-      )))
-
+        (let [fun (swap! cache
+                         (fn [old]
+                           (if (not= requested-deps (-> old meta :dependencies))
+                             (prod-create-template path loader)
+                             old)))]
+          (if block
+            (fun data block)
+            (fun data)))))))
 
 
 

@@ -30,10 +30,9 @@ TagCallBlock = <tag-open> <'callblock'> <ws> sym (<ws> <'with'> <ws> WithAssocLi
   (swap! *template-params* update-in [:blocks sym] identity)
   (cond->
      (fn block-emitter []
-       (try
-         (in-block sym ((get-block sym)))
-         (catch NullPointerException e
-           (throw (scijors-tree-exception tree (format "No such block: '%s'" (name sym)) )))))
+       (if-let [block-fn (get-block sym)]
+         (in-block sym (block-fn))
+         (throw (scijors-tree-exception tree (format "No such block: '%s'!" sym)))))
      with-assoc-list
      (wrap-assoc-list with-assoc-list)))
 
