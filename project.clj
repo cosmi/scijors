@@ -1,4 +1,4 @@
-(defproject org.cosmi.scijors "0.1.0-RC2"
+(defproject org.cosmi.scijors "0.1.1-RC1"
   :description "An easy to use, ultra-high performance, HTML-based Clojure templating library."
   :url "https://github.com/cosmi/scijors"
   :license {:name "Eclipse Public License"

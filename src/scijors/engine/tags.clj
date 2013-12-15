@@ -27,7 +27,7 @@ TagCallBlock = <tag-open> <'callblock'> <ws> sym (<ws> <'with'> <ws> WithAssocLi
   [_ sym with-assoc-list :as tree]
 
   ;; Mark that block
-  (swap! *template-params* update-in [:blocks sym] identity)
+  (mark-block! sym)
   (cond->
      (fn block-emitter []
        (if-let [block-fn (get-block sym)]
@@ -45,29 +45,6 @@ TagDefBlock = <tag-open> <'defblock'> <ws> sym <tag-close> Content (<end> | <tag
               (register-block! sym tree content))
             nil))
 
-
-
-
-(deftag :TagExtends "
-TagExtends = <tag-open> <'extends'> <ws> string <tag-close>;
-"
-  [_ filename :as tree]
-  (let [filename (unescape-string filename)]
-    (when-not (nil? (get @*template-params* :extends))
-      (throw  (scijors-tree-exception tree (str "Extend called twice"))))
-    (swap! *template-params* update-in [:mixins] conj filename)
-    (swap! *template-params* assoc :extends filename)
-    nil))
-
-
-
-(deftag :TagLoad "
-TagLoad = <tag-open> (<'mixin'> | <'load'>) <ws> string <tag-close>;
-"
-  [_ filename]
-  (let [filename (unescape-string filename)]
-    (swap! *template-params* update-in [:mixins] conj filename)
-    nil))
 
 
 
@@ -141,7 +118,7 @@ TagVerbatim = <'{%%'> (#'%%[^}]' | #'%[^%]' | #'[^%]+')* <'%%}'>;"
 (deftag :TagId "
 TagId = <BT> <'id'> <ET>;"
   [_]
-  (constantly (hash *filename*)))
+  (constantly (hash *current-filename*)))
 
 (deftag :TagFor "
 TagFor = TagForStart Content (TagForElse | TagForInterpose TagForElse?)? <BT> (<'end'> | <'endfor'>) <ET>;

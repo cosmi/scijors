@@ -25,36 +25,7 @@
    :else
    (str root subpath)))
 
-(defn- mixin-template [template mixin]
-  (-> template
-      (assoc :blocks (merge-with #(or %2 %1)
-                                 (dissoc (mixin :blocks) :root)
-                                 (template :blocks)))))
 
-(defn- extend-template [parent-template child-template]
-   (-> child-template
-       (assoc-in [:blocks :root] (get-in parent-template [:blocks :root]))))
-
-
-(defn- prepare-template [filename template-provider]
-  (let [template (template-provider filename)
-        root (get-root filename)
-        mixins (->> (template :mixins)
-                    (map #(relative-filename root %))
-                    (map #(prepare-template % template-provider))
-                    )
-        template
-        (if-not (template :extends)
-          template
-          (-> template :extends 
-              (->> (relative-filename root))
-              (prepare-template template-provider)
-              (extend-template template)))
-        template (reduce mixin-template template mixins)]
-    template
-
-    )
-  )
 
 (defn classpath-loader 
   [^String s]
@@ -74,44 +45,30 @@
   ([filename]
      (load-template filename classpath-loader))
   ([filename resource-provider]
-     (let [dependencies (atom #{})
-           get-template (memoize
-                         (fn [fname]
-                           (if-let [res (resource-provider fname)]
-                             (let [res
-                                   (if (string? res)
-                                     res
-                                     (do
-                                       (swap! dependencies conj res)
-                                       (slurp res)))]
-                               (assoc (in-file fname (compile-template res))
-                                 :filename fname))
-                             (throw (Exception. (str "No such file: " fname))))))
-           prepared-template
-           (prepare-template (relative-filename "/" filename) get-template)
-           blocks (prepared-template :blocks)
-           dependencies (->> @dependencies
-                             vec
-                             (map (fn [url]
-                                    (when (or
-                                           (and (= java.net.URL (class url))
-                                                (= "file" (.getProtocol url)))
-                                           (= java.io.File (class url)))
-                                      (let [file (io/as-file url)]
-                                        [file (.lastModified file)]))))
-                             doall
-                             (into {}))]
-       (when-let [err-nom (some (fn [[nom content]]
-                                    (when (nil? content) nom)) blocks)]
-         (throw (Exception. (format "Block '%s' is used but is not declared!" err-nom))))
-       (->
-        (fn template
-         ([input block]
-            (binding [*block-scope* blocks
-                      *input-scope* input]
-              ((get-block block))
-                          ))
-         ([input] (template input :root)))
-        (vary-meta assoc :dependencies dependencies)
-        ))))
-     
+     (let [dependencies (atom #{})]
+       (binding [*loader* (memoize
+                           (fn [fname]
+                             (if-let [res (resource-provider fname)]
+                               (let [res
+                                     (if (string? res)
+                                       res
+                                       (do
+                                         (swap! dependencies conj res)
+                                         (slurp res)))]
+                                 res)
+                               (throw (Exception. (str "No such file: " fname))))))]
+         (let [prepared-template (compile-template filename)
+               dependencies (->> @dependencies
+                                 vec
+                                 (map (fn [url]
+                                        (when (or
+                                               (and (= java.net.URL (class url))
+                                                    (= "file" (.getProtocol url)))
+                                               (= java.io.File (class url)))
+                                          (let [file (io/as-file url)]
+                                            [file (.lastModified file)]))))
+                                 doall
+                                 (into {}))]
+           (-> prepared-template
+               (vary-meta assoc :dependencies dependencies)))))))
+

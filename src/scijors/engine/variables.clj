@@ -1,17 +1,24 @@
 (ns scijors.engine.variables
   (:use [scijors.engine markers]))
 
+;; At runtime:
+(def ^:dynamic *input-scope*) ;; is {}
+(def ^:dynamic *block-scope*) ;; is {}
 
-(def ^:dynamic *input-scope*)
+;; At runtime & compile-time
+(def ^:dynamic *current-filename* nil) ;; is string
+(def ^:dynamic *current-block* nil) ;; is string/keyword
 
-(def ^:dynamic *block-scope*)
+;; At compile-time:
+(def ^:dynamic *loader* nil) ;; is fn
+(def ^:dynamic *blocks* nil) ;; is (atom #{})
+(def ^:dynamic *root*) ;; is (atom "")
 
-(def ^:dynamic *template-params*)
 
-
-(def ^:dynamic *filename* nil)
-(def ^:dynamic *block*)
-
+(comment
+  *template-params*
+  {:blocks {}
+   :root-block ""})
 
 (defmacro with-input [input & body]
   `(binding [*input-scope* ~input]
@@ -19,8 +26,6 @@
     )
   )
 
-(defn get-block [block-name]
-  (get *block-scope* block-name))
 
 (defmacro with-scope [input & body]
   `(binding [*input-scope* ~input]
@@ -39,18 +44,22 @@
 
 
 (defmacro in-block [blockname & body]
-  `(binding [*block* ~blockname]
+  `(binding [*current-block* ~blockname]
      ~@body
      ))
 
 (defmacro in-file [filename & body]
- `(binding [*filename* ~filename]
+ `(binding [*current-filename* ~filename]
      ~@body
      ))
 
 (defn register-block! [block-name tree content]
-  (when-not (nil? (get-in @*template-params* [:blocks block-name]))
-    (throw (scijors-tree-exception  tree (str "Block redefined: " block-name))))
-  (swap! *template-params* assoc-in [:blocks block-name] content))
+  (let [old-block (@*blocks* block-name)]
+    (when (and old-block (let [filename (-> old-block meta :filename)]
+                           (or (= filename *current-filename*) (not filename))))
+          (throw (scijors-tree-exception  tree (str "Block redefined: " block-name)))))
+  (swap! *blocks* assoc block-name content))
 
+(defn mark-block! [block-name]
+  (swap! *blocks* update-in [block-name] identity))
 

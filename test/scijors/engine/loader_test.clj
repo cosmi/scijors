@@ -48,4 +48,3 @@
                                 test-template-loader)]
     (is (= (slurp (test-template-loader "outputs/multi1.html")) (template {})))))
 
-

@@ -4,8 +4,8 @@
         ))
 
 (defn compile-and-run [s & [inp]]
-  (with-input (or inp {})
-    ((get-in (compile-template s) [:blocks :root]))))
+  (binding [*loader* (constantly s)]
+    ((compile-template "") inp)))
 
 (deftest simple-input-test
   (is (= "4" (compile-and-run "{{4}}")))
