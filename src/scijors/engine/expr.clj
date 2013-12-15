@@ -64,7 +64,10 @@ Plus = OpExpr40 (<ws>? <'+'> <ws>? OpExpr40) +;
 Minus = OpExpr50 (<ws> <'-'> <ws>? OpExpr50) +;
 
 <OpExpr50> = Mult | OpExpr60;
-Mult = OpExpr60 (<ws>? <'*'> <ws>? OpExpr60) +;
+Mult = OpExpr55 (<ws>? <'*'> <ws>? OpExpr55) +;
+<OpExpr55> = Modulo | OpExpr60;
+Modulo = OpExpr60 (<ws>? <'%'> <ws>? OpExpr60) +;
+
 <OpExpr60> = Div | DivInt | OpExpr70;
 Div = OpExpr60 (<ws> <'/'> <ws> OpExpr70) +;
 DivInt = OpExpr70 (<ws> <'//'> <ws> OpExpr70) +;
@@ -143,6 +146,8 @@ Filter = #'(?!a)b';
   (apply - (map #(%) els)))
 (def-op :Mult els
   (apply * (map #(%) els)))
+(def-op :Modulo els
+  (apply mod (map #(%) els)))
 (def-op :Div els
   (apply / (map #(%) els)))
 (def-op :DivInt els
