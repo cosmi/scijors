@@ -29,10 +29,10 @@
   (swap! tags assoc nom {:name nom :grammar grammar :fun fun}))
 
 (defmacro deftag [nom grammar args & body]
-  `(let [grammar# ~grammar]
+  `(let [grammar# (strings/trim ~grammar)]
+     (assert (.startsWith grammar# ~(name nom)) "Tag grammar does not start with tag rule")
      (create-tag! ~nom grammar# (fn ~(-> nom name symbol) [~args] ~@body))
-     (defgrammar ~nom grammar#)
-     ))
+     (defgrammar ~nom grammar#)))
 
 
 (deftag :Text

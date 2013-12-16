@@ -46,6 +46,72 @@ TagDefBlock = <tag-open> <'defblock'> <ws> sym <tag-close> Content (<end> | <tag
             nil))
 
 
+(defn define-block-multi [[_ [_ sym expr with-assoc-list] default-content :as tree]]
+  (in-block sym
+            (let [default-content (compile-tags default-content)
+                  expr (compile-expr expr)
+                  dispatch-map (atom {})
+                  block (-> (fn []
+                              (let [dispatch-val (expr)
+                                    dispatched-fun (@dispatch-map dispatch-val default-content)]
+                                (dispatched-fun)))
+                            (vary-meta assoc :dispatch-map dispatch-map))
+                            
+                           ]
+              (register-block! sym tree block))))
+
+
+(deftag :TagBlockMulti "
+TagBlockMulti = TagBlockMultiBegin Content (<end> | <tag-open> <'endmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiBegin = <tag-open> <'multiblock'> <ws> sym <'on'> Expr
+                 (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
+  [_ [TagBlockMultiBegin sym expr with-assoc-list :as begin-node] default-content :as tree]
+  (assert (= TagBlockMultiBegin :TagBlockMultiBegin))
+  (define-block-multi tree)
+  (in-block sym
+            ;; TODO: if extends, the top level block should throw exception if defined with 'with'
+            (cond->
+             (create-block-emitter sym)
+             with-assoc-list
+             (wrap-assoc-list with-assoc-list))))
+
+(deftag :TagBlockMultiDef "
+TagBlockMultiDef = TagBlockMultiBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiDefBegin = <tag-open> <'defmultiblock'> <ws> sym <'on'> Expr
+                  <tag-close>;"
+  [_ [TagBlockMultiBegin sym expr  :as begin-node] default-content :as tree]
+  (assert (= TagBlockMultiBegin :TagBlockMultiDefBegin))
+  (define-block-multi tree)
+  nil)
+
+
+(defn define-block-multi-extend [[_ [TagBlockMultiExtendBegin sym expr] content :as tree]]
+  (in-block sym
+            (let [content (compile-tags content)
+                  expr (compile-expr expr)]
+              (when (not (const? expr))
+                (throw (scijors-tree-exception tree "Dispatch value has to be constant")))
+              (extend-block! sym (expr) tree content))))
+
+(deftag :TagBlockMultiExtend "
+TagBlockMultiExtend = TagBlockMultiBegin Content (<end> | <tag-open> <'endmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <'extend'> Expr (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
+  [_ [TagBlockMultiExtendBegin sym expr with-assoc-list] content :as tree]
+  (assert (= TagBlockMultiExtendBegin :TagBlockMultiExtendBegin))
+  (define-block-multi-extend tree)
+  (in-block sym
+            (cond->
+             (create-block-emitter sym)
+             with-assoc-list
+             (wrap-assoc-list with-assoc-list))))
+
+(deftag :TagBlockMultiDefExtend "
+TagBlockMultiDefExtend = TagBlockMultiBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiDefExtendBegin = <tag-open> <'defmultiblock'> <ws> sym <'extend'> Expr  <tag-close>;"
+  [_ [TagBlockMultiExtendBegin sym expr with-assoc-list] content :as tree]
+  (assert (= TagBlockMultiExtendBegin :TagBlockMultiExtendBegin))
+  (define-block-multi-extend tree)
+  nil)
 
 
 
