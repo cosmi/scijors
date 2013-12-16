@@ -1,6 +1,10 @@
 <html><head></head><body>
+{%defmultiblock mt on disp %}disp:{{disp}}{%end}
+{%defmultiblock mt extend 7 %}disp:seven{%end}
 {%block content%}Some other val: x={{x}}{%endblock%}
 {%block subcontent with z = 5, v = 3 }Some another val: v={{v}}{%endblock}
 A={%switch a case 1}one{%case 2%}two{%endswitch}
 B={%switch b case :a}a{%case :b%}bee{%else}nothing{%end%}
+5={%callblock mt with disp=5%}
+7={%callblock mt with disp=7%}
 </body></html>

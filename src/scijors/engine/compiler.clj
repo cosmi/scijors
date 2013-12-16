@@ -44,6 +44,8 @@
                                  *current-filename* template-path]
                          (let [template-string (*loader* template-path)
                                ast ((get-parser) template-string :start :Content)
+                               _ (when (insta/failure? ast)
+                                   (throw (Exception. (prn-str ast))))
                                fun (-> ast (assoc-source
                                             template-path
                                             template-string)

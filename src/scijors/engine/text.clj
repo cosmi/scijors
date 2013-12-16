@@ -49,9 +49,9 @@
 
 (defn compile-tag [tree]
   (when-let [tag-fn (let [tree (cond-> tree (seq? tree) first )
-                          [tag & rst] tree
-                          tag (@tags tag)]
-                      (assert tag (str "No such tag: " tag))
+                          [tagname & rst] tree
+                          tag (@tags tagname)]
+                      (assert tag (str "No such tag: " tagname))
                       ( (tag :fun) tree))]
     (-> tag-fn
         (mark-source-tree tree))))

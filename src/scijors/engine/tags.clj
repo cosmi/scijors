@@ -63,7 +63,7 @@ TagDefBlock = <tag-open> <'defblock'> <ws> sym <tag-close> Content (<end> | <tag
 
 (deftag :TagBlockMulti "
 TagBlockMulti = TagBlockMultiBegin Content (<end> | <tag-open> <'endmultiblock'> (<ws> <sym>)? <tag-close>) ;
-TagBlockMultiBegin = <tag-open> <'multiblock'> <ws> sym <'on'> Expr
+TagBlockMultiBegin = <tag-open> <'multiblock'> <ws> sym <ws><'on'><ws> Expr
                  (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
   [_ [TagBlockMultiBegin sym expr with-assoc-list :as begin-node] default-content :as tree]
   (assert (= TagBlockMultiBegin :TagBlockMultiBegin))
@@ -76,8 +76,8 @@ TagBlockMultiBegin = <tag-open> <'multiblock'> <ws> sym <'on'> Expr
              (wrap-assoc-list with-assoc-list))))
 
 (deftag :TagBlockMultiDef "
-TagBlockMultiDef = TagBlockMultiBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
-TagBlockMultiDefBegin = <tag-open> <'defmultiblock'> <ws> sym <'on'> Expr
+TagBlockMultiDef = TagBlockMultiDefBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiDefBegin = <tag-open> <'defmultiblock'> <ws> sym <ws><'on'><ws> Expr
                   <tag-close>;"
   [_ [TagBlockMultiBegin sym expr  :as begin-node] default-content :as tree]
   (assert (= TagBlockMultiBegin :TagBlockMultiDefBegin))
@@ -94,8 +94,8 @@ TagBlockMultiDefBegin = <tag-open> <'defmultiblock'> <ws> sym <'on'> Expr
               (extend-block! sym (expr) tree content))))
 
 (deftag :TagBlockMultiExtend "
-TagBlockMultiExtend = TagBlockMultiBegin Content (<end> | <tag-open> <'endmultiblock'> (<ws> <sym>)? <tag-close>) ;
-TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <'extend'> Expr (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
+TagBlockMultiExtend = TagBlockMultiExtendBegin Content (<end> | <tag-open> <'endmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <ws> <'extend'> <ws> Expr (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
   [_ [TagBlockMultiExtendBegin sym expr with-assoc-list] content :as tree]
   (assert (= TagBlockMultiExtendBegin :TagBlockMultiExtendBegin))
   (define-block-multi-extend tree)
@@ -106,10 +106,10 @@ TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <'extend'> Expr (<
              (wrap-assoc-list with-assoc-list))))
 
 (deftag :TagBlockMultiDefExtend "
-TagBlockMultiDefExtend = TagBlockMultiBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
-TagBlockMultiDefExtendBegin = <tag-open> <'defmultiblock'> <ws> sym <'extend'> Expr  <tag-close>;"
-  [_ [TagBlockMultiExtendBegin sym expr with-assoc-list] content :as tree]
-  (assert (= TagBlockMultiExtendBegin :TagBlockMultiExtendBegin))
+TagBlockMultiDefExtend = TagBlockMultiDefExtendBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
+TagBlockMultiDefExtendBegin = <tag-open> <'defmultiblock'> <ws> sym <ws><'extend'><ws> Expr  <tag-close>;"
+  [_ [TagBlockMultiDefExtendBegin sym expr with-assoc-list] content :as tree]
+  (assert (= TagBlockMultiDefExtendBegin :TagBlockMultiDefExtendBegin))
   (define-block-multi-extend tree)
   nil)
 
