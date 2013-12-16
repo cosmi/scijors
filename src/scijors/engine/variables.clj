@@ -71,7 +71,7 @@
                      (vary-meta assoc :filename filename))]
     (swap! *blocks* assoc block-name new-content)))
 
-(defn extend-block! [block-name value tree content]
+(defn extend-block! [block-name values tree content]
   (let [dispatch-map (-> @*blocks* (get block-name) meta :dispatch-map)]
     (when-not dispatch-map
       (throw (scijors-tree-exception tree (str "Block is not a multiblock: " block-name))))
@@ -82,7 +82,8 @@
                            (content)))
                        (with-meta (meta content))
                        (vary-meta assoc :filename filename))]
-      (swap! dispatch-map assoc value new-content))))
+      (swap! dispatch-map (fn [m]
+                            (reduce #(assoc % %2 new-content) m values))))))
 
 
 

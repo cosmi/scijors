@@ -85,18 +85,19 @@ TagBlockMultiDefBegin = <tag-open> <'defmultiblock'> <ws> sym <ws><'on'><ws> Exp
   nil)
 
 
-(defn define-block-multi-extend [[_ [TagBlockMultiExtendBegin sym expr] content :as tree]]
+(defn define-block-multi-extend [[_ [TagBlockMultiExtendBegin sym [_ & exprs] ] content :as tree]]
   (in-block sym
             (let [content (compile-tags content)
-                  expr (compile-expr expr)]
-              (when (not (const? expr))
+                  exprs (map compile-expr exprs)]
+              (when-let [non-const (some #(not (const? %)) exprs)]
                 (throw (scijors-tree-exception tree "Dispatch value has to be constant")))
-              (extend-block! sym (expr) tree content))))
+              (extend-block! sym (mapv #(%) exprs) tree content))))
 
 (deftag :TagBlockMultiExtend "
 TagBlockMultiExtend = TagBlockMultiExtendBegin Content (<end> | <tag-open> <'endmultiblock'> (<ws> <sym>)? <tag-close>) ;
-TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <ws> <'extend'> <ws> Expr (<ws> <'with'> <ws> WithAssocList)? <tag-close>;"
-  [_ [TagBlockMultiExtendBegin sym expr with-assoc-list] content :as tree]
+TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <ws> <'extend'> <ws> TagBlockMultiExtendExprs (<ws> <'with'> <ws> WithAssocList)? <tag-close>;
+TagBlockMultiExtendExprs = Expr (<comma> Expr)*;"
+  [_ [TagBlockMultiExtendBegin sym [_ & exprs] with-assoc-list] content :as tree]
   (assert (= TagBlockMultiExtendBegin :TagBlockMultiExtendBegin))
   (define-block-multi-extend tree)
   (in-block sym
@@ -107,8 +108,8 @@ TagBlockMultiExtendBegin = <tag-open> <'multiblock'> <ws> sym <ws> <'extend'> <w
 
 (deftag :TagBlockMultiDefExtend "
 TagBlockMultiDefExtend = TagBlockMultiDefExtendBegin Content (<end> | <tag-open> <'enddefmultiblock'> (<ws> <sym>)? <tag-close>) ;
-TagBlockMultiDefExtendBegin = <tag-open> <'defmultiblock'> <ws> sym <ws><'extend'><ws> Expr  <tag-close>;"
-  [_ [TagBlockMultiDefExtendBegin sym expr with-assoc-list] content :as tree]
+TagBlockMultiDefExtendBegin = <tag-open> <'defmultiblock'> <ws> sym <ws><'extend'><ws> TagBlockMultiExtendExprs  <tag-close>;"
+  [_ [TagBlockMultiDefExtendBegin sym [_ & exprs]  ] content :as tree]
   (assert (= TagBlockMultiDefExtendBegin :TagBlockMultiDefExtendBegin))
   (define-block-multi-extend tree)
   nil)
