@@ -1,5 +1,5 @@
 (ns scijors.engine.loader-test
-  (:use [scijors.engine loader]
+  (:use [scijors.engine loader compiler]
         [clojure.test])
   (:require [clojure.java.io :as io]))
 

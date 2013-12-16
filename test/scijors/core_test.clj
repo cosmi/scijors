@@ -12,6 +12,7 @@
          (slurp "test-resources/outputs/multi1.html"))))
 
 (deftest load-error-test
-  (is (thrown? clojure.lang.ExceptionInfo ((create-template "error.html") {}))))
+  (with-redefs [scijors.engine.markers/scijors-tree-warning! scijors.engine.markers/scijors-tree-exception] 
+    (is (thrown? clojure.lang.ExceptionInfo ((create-template "error.html") {})))))
 
   

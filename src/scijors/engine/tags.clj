@@ -2,7 +2,9 @@
   (:use [scijors.engine expr markers text variables elements commons]))
 
 
-
+(defn- create-block-emitter [sym]
+  (fn block-emitter []
+    ((get-block sym))))
 
 (deftag :TagBlock "
 TagBlock = TagBlockBegin Content (<end> | <tag-open> <'endblock'> (<ws> <sym>)? <tag-close>) ;
@@ -15,9 +17,7 @@ TagBlockBegin = <tag-open> <'block'> <ws> sym
               (register-block! sym tree content)
               ;; TODO: if extends, the top level block should throw exception if defined with 'with'
               (cond->
-               (fn block-emitter []
-                 (in-block sym
-                           ((get-block sym))))
+               (create-block-emitter sym)
                with-assoc-list
                (wrap-assoc-list with-assoc-list)))))
 
@@ -64,7 +64,7 @@ TagIf =  TagIfIf TagIfElsif* TagIfElse? <tag-open> (<'end'> | <'endif'>) <tag-cl
 <TagIfElse> = <tag-open> 'else' <tag-close> Content ;"
   [_ & cases]
   (let [cases (partition-all 2 cases)
-        cases (map (fn [[expr,content]]
+        cases (mapv (fn [[expr,content]]
                      [(if (= expr "else") (constantly true) (compile-expr expr))
                       (compile-tags content)]) cases)]
     (reduce (fn [last-fn [expr content]]
@@ -85,7 +85,7 @@ TagSwitchElse = <BT> <'else'> <ET> Content ;"
                (for [[TagSwitchCase expr & rst] cases]
                 (let [exprs (cons expr (butlast rst))
                       content (last rst)
-                      exprs (map compile-expr exprs)
+                      exprs (mapv compile-expr exprs)
                       content (compile-tags content)]
                   (when-let [expr (some (complement const?) exprs)]
                     (throw (scijors-tree-exception expr "Not a constant")))

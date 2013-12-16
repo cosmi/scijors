@@ -63,3 +63,11 @@
              (merge data
                     {:tree tree :msg msg
                      :type :scijors-tree-exception}))))
+
+(defn scijors-tree-warning! [tree msg]
+  (binding [*out* *err*]
+    (let [{:keys [col row text filename] :as data} (get-source-string-data tree)] 
+      (println "WARN:" (format "Error at file: \"%s\" row:%d, col:%d, starting with \"%s\":\n%s"
+                       filename col row (subs text 0 (min (count text) 50))
+                       msg)))))
+
