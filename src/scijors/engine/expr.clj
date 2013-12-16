@@ -212,8 +212,12 @@ Filter = #'(?!a)b';
 
 (defmethod compile-expr-impl :Variable [[_ s]]
   (let [kword (keyword s)]
-    (fn variable []
-      (get-scope-variable kword))))
+    (case kword
+      :_global
+      (fn global []
+        *input-scope*)
+      (fn variable []
+        (get-scope-variable kword)))))
 
 (defmethod compile-expr-impl :Block [[_ s]]
   (let [kword (keyword s)]
