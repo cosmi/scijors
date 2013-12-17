@@ -54,27 +54,42 @@
 
 
 
-
-
 (defn register-block! [block-name tree content]
-  (let [old-block (@*blocks* block-name)]
+  (let [old-block (@*blocks* block-name)
+        dispatch-map (-> old-block meta :dispatch-map)]
     (when (and old-block (let [filename (-> old-block meta :filename)]
-                           (or (= filename *current-filename*) (not filename))))
-      (throw (scijors-tree-exception  tree (str "Block redefined: " block-name)))))
-  (let [filename *current-filename*
-        new-content (->
-                     (fn []
-                       (binding [*current-filename* filename
-                                 *current-block* block-name]
-                         (content)))
-                     (with-meta (meta content))
-                     (vary-meta assoc :filename filename))]
-    (swap! *blocks* assoc block-name new-content)))
+                           (= filename *current-filename*)))
+      (throw (scijors-tree-exception  tree (str "Block redefined: " block-name))))
+    (let [filename *current-filename*
+          content-meta (meta content)
+          content-meta (if-not dispatch-map
+                         content-meta
+                         (if (-> content-meta :dispatch-map)
+                           (swap! (-> content-meta :dispatch-map) merge @dispatch-map)
+                           (assoc content-meta :dispatch-map dispatch-map)))
+          new-content (->
+                       (fn []
+                         (binding [*current-filename* filename
+                                   *current-block* block-name]
+                           (content)))
+                       (with-meta content-meta)
+                       (vary-meta assoc :filename filename))]
+      (swap! *blocks* assoc block-name new-content))))
 
 (defn extend-block! [block-name values tree content]
-  (let [dispatch-map (-> @*blocks* (get block-name) meta :dispatch-map)]
-    (when-not dispatch-map
-      (throw (scijors-tree-exception tree (str "Block is not a multiblock: " block-name))))
+  (let [the-block (-> @*blocks* (get block-name))
+        the-block (or the-block
+                      (->
+                       (swap! *blocks* assoc block-name
+                              (fn no-block-emitter []
+                                (throw (scijors-tree-exception tree (format "Multiblock '%s' is extended, but not defined:" block-name)))))
+                       (get block-name)))
+        dispatch-map (-> the-block meta :dispatch-map)
+        dispatch-map (or dispatch-map
+                         (let [dmap (atom {})]
+                           (swap! *blocks* update-in [block-name] vary-meta assoc :dispatch-map dmap)
+                           dmap))]
+
     (let [filename *current-filename*
           new-content (->
                        (fn []

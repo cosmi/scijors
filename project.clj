@@ -1,4 +1,4 @@
-(defproject scijors "0.1.1"
+(defproject scijors "0.1.2"
   :description "An easy to use, ultra-high performance, HTML-based Clojure templating library."
   :url "https://github.com/cosmi/scijors"
   :license {:name "Eclipse Public License"
