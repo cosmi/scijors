@@ -170,6 +170,7 @@ Filter = #'(?!a)b';
 (def-op :Not els
   (not ((first els))))
 
+
 (def-op :Equal els
   (reduce = (map #(%) els)))
 (def-op :EqualNum els
@@ -186,6 +187,7 @@ Filter = #'(?!a)b';
   (reduce <= (map #(%) els)))
 (def-op :LT els
   (reduce < (map #(%) els)))
+
 
 (defmethod compile-expr-impl :Map [[_ & els :as k]]
   (let [els (->> els
@@ -223,6 +225,13 @@ Filter = #'(?!a)b';
   (let [kword (keyword s)]
     (fn variable []
       (get-block kword))))
+
+
+(defmethod compile-expr-impl :Deref [[_ expr ]]
+  (let [expr (compile-expr expr)]
+    (fn deref-op []
+      (deref (expr)))))
+
 
 (defmethod compile-expr-impl :DotIndex [[_ expr & s]]
   (let [kword (mapv keyword s)
