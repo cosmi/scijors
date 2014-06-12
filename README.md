@@ -6,7 +6,7 @@ A powerful and blazingly fast templating language and library for Clojure. With 
 
  Your `project.clj` dependency:
 ```clojure
-[scijors "0.1.1"]
+[scijors "0.1.4"]
 ```
 or find it in [Clojars](https://clojars.org/scijors).
 
@@ -30,21 +30,30 @@ Features:
 
 ## Usage
 
-### Installation
+### Quick start
 
 In your project.clj dependencies add:
 
 ```clojure
-[scijors "0.1.1"]
+[scijors "0.1.4"]
 ```
 
-Most probably you will want to have some default data in your templates. To do so, create a file like this:
+Put your template files on classpath in directory `templates`. In most cases that means `%PROJECT_PATH%/resources/templates`.
+
+To use a template, load it first (`(scijors.core/load-template "example.html")` - assuming that your template exists in `%PROJECT_PATH%/resources/templates/example.html`). `load-template` will return a function that takes single argument - hashmap of arguments
+
+To render just a single block, not the whole template, you can pass the block's name as second optional argument.
+
+### Practical usage:
+
+Most probably you will want to have some default data and other settings in your templates. To do so, create a file like this:
 ```clojure
 (ns your-project-name.render
   (:require [scijors.core :as scijors]))
 
-(def DEVMODE (boolean (System/getProperty "devmode")))
-;; (or any other way to check if you are in developer mode)
+
+;; this will set the default mode - by default scijors will check for each dependency if it changed.
+(scijors/set-reload-on-change! (System/getProperty "devmode"))
 
 (defn enrich-input [input]
   (merge {:some-value "that you always want to inject into the template"
@@ -63,13 +72,6 @@ Most probably you will want to have some default data in your templates. To do s
 (defmacro deftemplate [sym path]
   `(def ~sym (create-template ~path)))
 ```
-This documentation assumes that you did that.
-
-### Basic usage
-
-Put your template files on classpath in directory `templates`. In most cases that means `./resources/templates`.
-
-To use a template, define it first (`(deftemplate render-example "example.html")`), then you can just call as a function. First argument is the data you want to pass, as a hashmap. To render just a single block, not the whole template, pass the block's name as the second argument.
 
 ### Files layout
 
@@ -85,9 +87,9 @@ By default, templates are on classpath in directory `templates`. You can change 
      (str "templates" s))))
 ```
    
-### Dev mode:
+### Automatic template refresh:
 
-If you pass `(scijors/create-template path :devmode true)`, the template will check on each call if the files it depends on (that is the main template file, the `extended` file, the loaded and included files... etc.).
+By default, scijors template will check the files used by it every time it is generated. It is most of the time quite fast, but in production environment you might want to skip the check. To do so, either use `(scijors.core/set-reload-on-change! false)` or pass an extra argument to `load-template`: `(scijors.core/load-template "example.html" :mode :prod)`.
 
 ## Language syntax
 
@@ -382,7 +384,7 @@ Yes, please!
 
 ## License
 
-Copyright © 2013- Marcin Skotniczny & [Software Mansion](http://software-mansion.com)
+Copyright © 2013- Marcin Skotniczny & [Software Mansion](http://swmansion.com)
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
