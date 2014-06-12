@@ -19,6 +19,14 @@
      (subs s 1) s)))
 
 
+(defn is-url-file? [url]
+  (when (or
+         (and (= java.net.URL (class url))
+              (= "file" (.getProtocol url)))
+         (= java.io.File (class url)))
+    (let [file (io/as-file url)]
+      [file (.lastModified file)])))
+
 
 (defn load-template
   ([filename]
@@ -39,13 +47,7 @@
          (let [prepared-template (compile-template filename)
                dependencies (->> @dependencies
                                  vec
-                                 (map (fn [url]
-                                        (when (or
-                                               (and (= java.net.URL (class url))
-                                                    (= "file" (.getProtocol url)))
-                                               (= java.io.File (class url)))
-                                          (let [file (io/as-file url)]
-                                            [file (.lastModified file)]))))
+                                 (map is-url-file?)
                                  doall
                                  (into {}))]
            (-> prepared-template
