@@ -111,10 +111,16 @@ Simple example:
     <h1>{{item.name}}</h1>
     <p style="color:{{item.description-color}}">{{item.description}}</p>
     <h2>Elements</h2>
-  {%for element index i in item.elements%}
-      <h3>Element no {{i + 1}}</h3>
-      <p>{{element.description}}</p>
-  {%end%}
+  {% for element index i in item.elements %}
+      <h3>Element no 
+      {% if i % 15 == 0 %}Fizz Buzz
+      {% else if i % 3 == 0 %}Fizz
+      {% else if i % 5 == 0 %}Buzz
+      {% else %}{{i + 1}}
+      {% end %}
+      </h3>
+      <p>{{ element.description }}</p>
+  {% end %}
 </body>
 </html>
 ```
