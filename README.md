@@ -91,6 +91,12 @@ By default, templates are on classpath in directory `templates`. You can change 
 
 By default, scijors template will check the files used by it every time it is generated. It is most of the time quite fast, but in production environment you might want to skip the check. To do so, either use `(scijors.core/set-reload-on-change! false)` or pass an extra argument to `load-template`: `(scijors.core/load-template "example.html" :mode :prod)`.
 
+
+### Lazy template loading:
+
+By default, scijors template will load the template in place. Sometimes it would be better to load it on demand, for example when you want to decrease the loading time of your app or to be able to access symbols from namespaces that haven't yet been required. To do so, pass an argument to `load-template`: `(scijors.core/load-template "example.html" :lazy true)`.
+
+
 ## Language syntax
 
 The templates are build with three main things interleaved: text, tags and expressions. Text is just a text, Tags are parts wrapped in `{% %}`, expressions are wrapped with `{{ }}`. 
