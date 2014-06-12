@@ -35,7 +35,7 @@
 (def ^:private reload-on-change true )
 
 (defn set-reload-on-change! [mode]
-  (alter-var-root #'reload-on-change (constantly mode))
+  (alter-var-root #'reload-on-change (constantly (boolean mode)))
   mode)
 
 (defn auto-create-template [path loader]
@@ -77,7 +77,7 @@
   (alter-var-root #'default-loader (constantly new-loader))
   new-loader)
 
-(defn create-template [path & {:keys [mode devmode loader lazy]
+(defn load-template [path & {:keys [mode devmode loader lazy]
                                :or {loader default-loader}}]
   (let [t
         (case (or mode (and devmode :dev) :auto)
@@ -90,3 +90,5 @@
     (if lazy
       (make-lazy t)
       (t))))
+
+(def ^:deprecated create-template load-template)
