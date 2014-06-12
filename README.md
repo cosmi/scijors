@@ -106,15 +106,15 @@ Simple example:
 <html>
 <head><title>Your webapp - {{item.name}}</title></head>
 <body>
-{# This is a comment #}
-<p> Hello, {{user.name}}!</p>
-<h1>{{item.name}}</h1>
-<p style="color:{{item.description-color}}">{{item.description}}</p>
-<h2>Elements</h2>
-{%for element index i in item.elements%}
-<h3>Element no {{i + 1}}</h3>
-<p>{{element.description}}</p>
-{%end%}
+  {# This is a comment #}
+    <p> Hello, {{user.name}}!</p>
+    <h1>{{item.name}}</h1>
+    <p style="color:{{item.description-color}}">{{item.description}}</p>
+    <h2>Elements</h2>
+  {%for element index i in item.elements%}
+      <h3>Element no {{i + 1}}</h3>
+      <p>{{element.description}}</p>
+  {%end%}
 </body>
 </html>
 ```
